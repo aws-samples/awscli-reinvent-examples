@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# This is the script that was used
+# for this part of the "Automating AWS with the AWS CLI"
+# talk: https://youtu.be/TnfqJYPjD9I?t=1962
+
+# We require the --region argument because this is such
+# a destructive thing you have to be absolutely sure you
+# want to do this.
+docs="usage: remove-sgs appname
+
+This command will remove every single security group in a given
+region that's tagged with appname=<your-provided-value>.
+Be VERY careful using this command.
+"
+if [[ -z "$1" ]]; then
+  echo "$docs"
+  exit 1
+fi
+
+tag_value_name="$1"
+
+errexit() {
+  echo "ERROR: $(basename "$0") (line ${LINENO}): ${1:-"Unknown Error"}" 1>&2
+  exit 1
+}
+
+query() {
+  jp -u "$2" <<<"$1"
+}
+
+security_groups=$(aws ec2 describe-security-groups \
+  --query SecurityGroups \
+  --filters "Name=tag:appname,Values=$tag_value_name") \
+  || errexit "Could not find security groups"
+
+echo "$security_groups"
+
+echo ""
+echo "You are about to remove ALL these security groups in the region $region_name"
+echo -n "To confirm, please type 'yes' and press enter: "
+read confirmation
+if [[ "$confirmation" != "yes" ]]
+then
+  echo "Didn't receive a confirmation, exiting."
+  exit 2
+fi
+
+
+num_groups=$(query "$security_groups" "length(@)")
+
+for ((i = 0 ; i < "$num_groups" ; i++)); do
+  group_id=$(query "$security_groups" "[$i].GroupId")
+  ip_permissions=$(query "$security_groups" "[$i].IpPermissions")
+  echo "Revoking ingress rules for security group: $group_id"
+  aws ec2 revoke-security-group-ingress --group-id "$group_id" --ip-permissions "$ip_permissions"
+done
+
+for ((i = 0 ; i < "$num_groups" ; i++)); do
+  group_id=$(query "$security_groups" "[$i].GroupId")
+  echo "Removing security group: $group_id"
+  aws ec2 delete-security-group --group-id "$group_id"
+done
