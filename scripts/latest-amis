@@ -41,7 +41,7 @@ else
       region_name="$1"
       ;;
     *)
-      echo "usage: list-amis [-r | --region]" 1>&2
+      echo "usage: latest-amis [-r | --region]" 1>&2
       exit 1
   esac
   list_amis "$region_name"
