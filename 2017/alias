@@ -1,0 +1,8 @@
+[toplevel]
+
+keychain = 
+  !f() {
+     ACCESS_KEY=$(security find-generic-password -s "aws demo access" -w reinvent)
+     SECRET_KEY=$(security find-generic-password -s "aws demo secret" -w reinvent)
+     echo \{\"AccessKeyId\":\""$ACCESS_KEY"\",\"SecretAccessKey\":\""$SECRET_KEY"\",\"Version\":1\}
+  }; f
