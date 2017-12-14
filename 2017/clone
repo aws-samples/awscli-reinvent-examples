@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# This script will list all of your AWS CodeCommit repositories and clone
+# each one into your current working directory.
+#
+# If you provide a "-r | --repository-name" option, it will only clone the
+# repository matching the provided name in your current working directory.
+
+clone() {
+  local repo_name="$1"
+  ssh_url=$(aws codecommit get-repository --repository-name "$repo_name" \
+            --query repositoryMetadata.cloneUrlSsh --output text)
+  git clone "$ssh_url"
+}
+
+
+if [ -z "$1" ]; then
+  for repo_name in $(aws codecommit list-repositories --query "repositories[].repositoryName" --output text); do
+    clone "$repo_name"
+  done
+else
+  case "$1" in
+    -r|--repository-name)
+      shift
+      repo_name="$1"
+      ;;
+    *)
+      echo "usage: clone [-r | --repository-name]" 1>&2
+      exit 1
+  esac
+  clone "$repo_name"
+fi
